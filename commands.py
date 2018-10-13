@@ -2,10 +2,11 @@ import settings
 
 
 class Command:
-    start = mem = job_id = run_time = state = 0
+    start = leave = mem = job_id = run_time = io = time_left = quantum = queue_arrival = 0
+    internal = False
     command_type: chr
 
-    def run(self):
+    def start(self):
         print("Event: {}   Time: {}".format(self.command_type, self.start))
 
 
@@ -18,12 +19,9 @@ class Add(Command):
         self.start = int(argv[0])
         self.job_id = int(argv[1])
         self.mem = int(argv[2])
-        self.run_time = int(argv[3])
+        self.run_time = self.time_left = int(argv[3])
 
-        global current_job
-        current_job += 1
-
-    def run(self):
+    def start(self):
 
         if self.mem > settings.memory:
             print("This job exceeds the system's main memory capacity.")
@@ -33,21 +31,22 @@ class Add(Command):
         settings.job_scheduling.put(self)
 
     def format_print(self):
-        print(print("%5d\t\t%4d\t\t%3d\t\t%5d\n" % (self.job_id, self.start, self.mem, self.run_time)))
+        print("%5d\t\t%4d\t\t%3d\t\t%5d\n" % (self.job_id, self.start, self.mem, self.run_time))
 
 
 class CurJob(Add):
     def print_on_cpu(self):
-        return None
+        print("%7d\t\t%7d\t\t\t%12d" % (self.job_id, self.start, self.time_left))
 
 
-current_job: CurJob
+current_job: CurJob = None
 
 
 class Completion(Command):
 
     def __init__(self, args):
         self.command_type = 'C'
+        self.internal = True
 
 
 class Display(Command):
@@ -58,7 +57,7 @@ class Display(Command):
         self.start = int(args)
         self.job_id = current_job
 
-    def run(self):  # TODO: Complete Display Run Function
+    def start(self):
 
         _status = "The status of the simulator at time {}.\n"
         _contents = "The contents of the {}\n"
@@ -75,24 +74,24 @@ class Display(Command):
             "\n",
             _status.format(self.start),
             "\n",
-            _contents.format(_job.capitalize()),
+            _contents.format(_job.upper()),
             "----------------------------------------\n",
             "\n",
             self.check_queue(settings.job_scheduling, _job),
             "\n",
-            _contents.format(_first.capitalize()),
+            _contents.format(_first.upper()),
             "-------------------------------------------\n",
             "\n",
             self.check_queue(settings.ready_queue, _first),
             "\n",
-            _contents.format(_second.capitalize()),
+            _contents.format(_second.upper()),
             "--------------------------------------------\n"
             "\n",
             self.check_queue(settings.io_queue, _io),
             "\n",
             self.check_cpu(),
             "\n",
-            _contents.format(_finished.capitalize()),
+            _contents.format(_finished.upper()),
             "--------------------------------------------\n",
             "\n",
             self.check_finished(),
@@ -149,6 +148,7 @@ class Expiration(Command):
 
     def __init__(self, args):
         self.command_type = 'E'
+        self.internal = True
 
 
 class IO(Command):
@@ -159,10 +159,14 @@ class IO(Command):
         argv = args.split("   ")
         self.start = argv[0]
         self.run_time = argv[1]
-        self.job_id = current_job
+
+    def start(self):
+        current_job.leave = self.start
+        current_job.io = self.run_time
 
 
 class Termination(Command):
 
     def __init__(self, args):
         self.command_type = 'T'
+        self.internal = True

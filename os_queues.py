@@ -3,8 +3,8 @@ from queue import Queue
 
 class OSQueue(Queue):
 
-    time_limit: int
+    quantum: int
 
-    def __init__(self, time_limit=None):
+    def __init__(self, quantum=None):
         super().__init__()
-        self.time_limit = time_limit
+        self.quantum = quantum
