@@ -3,7 +3,7 @@ from queue import PriorityQueue
 from queue import Queue
 
 time = 0
-time_queue = []
+time_queue = list()
 cpu = Queue(1)
 job_scheduling = OSQueue()
 ready_queue = OSQueue(100)
