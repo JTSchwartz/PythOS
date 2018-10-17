@@ -3,7 +3,7 @@ from collections import deque
 
 class OSQueue(deque):
 
-    quantum: int
+    quantum = None
 
     def __init__(self, quantum=None):
         super().__init__()
@@ -11,6 +11,9 @@ class OSQueue(deque):
 
     def put(self, obj):
         self.append(obj)
+
+    def put_back(self, obj):
+        self.appendleft(obj)
 
     def get(self):
         return self.popleft()

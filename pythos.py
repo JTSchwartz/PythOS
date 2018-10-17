@@ -48,6 +48,9 @@ def ready_up():
 
         current = settings.job_scheduling[0]
 
+    if settings.cpu_from_second and not settings.cpu.empty() and not settings.ready_queue.empty():
+        cpu_replace()
+
     if settings.cpu.empty():
         cpu_next()
 
@@ -64,6 +67,24 @@ def cpu_next():
         commands.current_job.run()
 
 
+def cpu_replace():
+    replace = settings.cpu.get()
+    time_on = settings.time - replace.queue_arrival
+    replace.quantum -= time_on
+    replace.time_left -= time_on
+    replace.state = 3
+    settings.secondary_queue.put(replace)
+
+    for signal in settings.time_queue:
+        if signal[1].parent.job_id == replace.job_id:
+            settings.time_queue.remove(signal)
+            break
+
+    commands.current_job = settings.ready_queue.get()
+    settings.cpu.put(commands.current_job)
+    commands.current_job.run()
+
+
 if __name__ == '__main__':
     settings.init()
 
@@ -74,7 +95,6 @@ if __name__ == '__main__':
             while len(settings.time_queue) != 0 and settings.time_queue[0][0] <= cmd.start:
                 settings.time = settings.time_queue[0][0]
                 run_now = heapq.heappop(settings.time_queue)[1]
-                # run_now.run()
 
                 if len(settings.time_queue) != 0 and settings.time == settings.time_queue[0][0]:
                     heapq.heappop(settings.time_queue)[1].run()
@@ -87,27 +107,27 @@ if __name__ == '__main__':
             ready_up()
 
         except EOFError:  # TODO: Finish all jobs in the system
-            while len(settings.time_queue) != 0:
-                settings.time = settings.time_queue[0][0]
-                heapq.heappop(settings.time_queue)[1].run()
-
-            print(
-                "\nThe contents of the FINAL FINISHED LIST",
-                "---------------------------------------\n",
-                "Job #  Arr. Time  Mem. Req.  Run Time  Start Time  Com. Time",
-                "-----  ---------  ---------  --------  ----------  ---------\n",
-                sep="\n")
-
-            count = wait_total = turnaround_total = 0.0
-
-            for job in settings.finished:
-                count += 1
-                wait_total += job.hit - job.start
-                turnaround_total += job.leave - job.start
-                job.finished_print()
-
-            print("\nThe Average Turnaround Time for the simulation was {} units.\n".format(turnaround_total/count))
-            print("The Average Job Scheduling Wait Time for the simulation was {} units.\n".format((wait_total/count) - (2 * count)))
-            print("There are {} blocks of main memory available in the system.".format(settings.memory_avail))
-
             break
+
+    while len(settings.time_queue) != 0:
+        settings.time = settings.time_queue[0][0]
+        heapq.heappop(settings.time_queue)[1].run()
+
+    print(
+        "\nThe contents of the FINAL FINISHED LIST",
+        "---------------------------------------\n",
+        "Job #  Arr. Time  Mem. Req.  Run Time  Start Time  Com. Time",
+        "-----  ---------  ---------  --------  ----------  ---------\n",
+        sep="\n")
+
+    count = wait_total = turnaround_total = 0.0
+
+    for job in settings.finished:
+        count += 1
+        wait_total += job.hit - job.start + job.io
+        turnaround_total += job.leave - job.start
+        job.finished_print()
+
+    print("\n\nThe Average Turnaround Time for the simulation was %.3f units.\n" % (turnaround_total / count))
+    print("The Average Job Scheduling Wait Time for the simulation was %.3f units.\n" % ((wait_total / count) - (2 * count)))
+    print("There are {} blocks of main memory available in the system.".format(settings.memory_avail))

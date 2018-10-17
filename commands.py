@@ -8,7 +8,7 @@ current_job = None
 class Command:
     start = leave = mem = job_id = run_time = io = state = time_left = quantum = queue_arrival = time_on_cpu = hit = 0
     internal = been_to_cpu = False
-    command_type: chr
+    command_type = None
 
     def __lt__(self, other):
         return not self.internal
@@ -44,7 +44,7 @@ class Command:
 
 
 class Add(Command):
-    trigger: Command = None
+    trigger = None
 
     def __init__(self, args):
         self.command_type = 'A'
@@ -79,9 +79,13 @@ class Add(Command):
                 this.been_to_cpu = True
                 this.hit = settings.time
 
+            settings.cpu_from_second = False
+
             move_to_cpu(this, 100)
 
         def secondary_cpu(this):
+            settings.cpu_from_second = True
+
             move_to_cpu(this, 300)
 
         def move_to_cpu(this, n):
@@ -124,20 +128,49 @@ class Add(Command):
     def print_on_cpu(self):
         print("\n%7d%12d%21d\n\n" % (self.job_id, self.hit, self.time_left - (settings.time - self.queue_arrival)))
 
-    def finished_print(self):  # TODO: Finish Formatting for Finished List
+    def io_print(self):
+        print("%5d%11d%11d%10d%15d%10d%12d" % (self.job_id, self.start, self.mem, self.run_time, (self.leave - self.io), self.io, self.leave))
+
+    def finished_print(self):
         print("%5d%11d%11d%10d%12d%11d" % (self.job_id, self.start, self.mem, self.run_time, self.hit, self.leave))
 
 
 class Completion(Command):
+    parent = None
 
-    def __init__(self, time):
+    def __init__(self, arg):
         self.command_type = 'C'
         self.internal = True
-        heapq.heappush(settings.time_queue, (time, self))
+        self.parent = arg
+        heapq.heappush(settings.time_queue, (self.parent.leave, self))
 
-    @staticmethod
-    def run():
-        settings.ready_queue.put(settings.io_queue.get())
+    def run(self):
+        global current_job
+
+        print("Event: {}   Time: {}".format(self.command_type, settings.time))
+        settings.io_queue.remove(self.parent)
+        self.parent.state = 1
+        settings.ready_queue.put(self.parent)
+
+        if settings.cpu_from_second and not settings.cpu.empty():
+            replace = settings.cpu.get()
+            time_on = settings.time - replace.queue_arrival
+            replace.quantum -= time_on
+            replace.time_left -= time_on
+            replace.state = 3
+            settings.secondary_queue.put(replace)
+
+            for signal in settings.time_queue:
+                if signal[1].parent.job_id == replace.job_id:
+                    settings.time_queue.remove(signal)
+                    break
+
+            current_job = settings.ready_queue.get()
+            settings.cpu.put(current_job)
+            current_job.run()
+
+        if settings.cpu.empty():
+            self.cpu_next()
 
 
 class Display(Command):
@@ -179,7 +212,7 @@ class Display(Command):
             _contents.format(_io.upper()),
             "----------------------------------\n",
             sep="\n")
-        self.check_queue(settings.io_queue, _io)
+        self.check_io()
         self.check_cpu()
         print(
             _contents.format(_finished.upper()),
@@ -187,6 +220,24 @@ class Display(Command):
             sep="\n")
         self.check_finished(),
         print(_memory_left.format(settings.memory_avail))
+
+    @staticmethod
+    def check_io():
+        if len(settings.io_queue) == 0:
+            print("The I/O Wait Queue is empty.\n\n")
+        else:
+            print(
+                "Job #  Arr. Time  Mem. Req.  Run Time  IO Start Time  IO Burst  Comp. Time",
+                "-----  ---------  ---------  --------  -------------  --------  ----------\n",
+                sep="\n")
+            temp_list = []
+            for job in settings.io_queue:
+                heapq.heappush(temp_list, (job.io, job))
+
+            for x in range(len(temp_list)):
+                heapq.heappop(temp_list)[1].io_print()
+
+            print("\n")
 
     @staticmethod
     def check_queue(queue, title):
@@ -230,7 +281,7 @@ class Display(Command):
 
 
 class Expiration(Command):
-    parent: Add
+    parent = None
 
     def __init__(self, parent):
         self.command_type = 'E'
@@ -241,7 +292,6 @@ class Expiration(Command):
 
     def run(self):
         print("Event: {}   Time: {}".format(self.command_type, settings.time))
-        # temp_time = settings.time - self.parent.queue_arrival
         self.parent.state = 3
         self.parent.time_left -= self.parent.quantum
         self.parent.time_on_cpu += self.parent.quantum
@@ -250,30 +300,35 @@ class Expiration(Command):
 
 
 class IO(Command):
-    parent: Add
+    parent = None
 
     def __init__(self, args):
         self.command_type = 'I'
-        argv = args.split("   ")
+        argv = re.split("\s+", args)
         self.start = int(argv[0])
-        self.run_time = argv[1]
+        self.run_time = int(argv[1])
 
     def start_job(self):
-        global current_job
-        self.parent = current_job
-        current_job.leave = self.start
-        current_job.io = self.run_time
-        settings.cpu.get()
-        settings.time_queue.remove(self.parent.trigger)
-        current_job.state = 4
-        current_job.trigger = Completion(current_job)
-        settings.io_queue.put(self.parent)
-        heapq.heapify(settings.time_queue)
+        print("Event: {}   Time: {}".format(self.command_type, self.start))
+        if settings.cpu.empty():
+            self.cpu_next()
+            return
+        self.parent = settings.cpu.get()
+        self.parent.time_left -= settings.time - self.parent.queue_arrival
+        self.parent.leave = settings.time + self.run_time
+        self.parent.io = self.run_time
+        for job in settings.time_queue:
+            if job[1].parent.job_id == self.parent.job_id:
+                settings.time_queue.remove(job)
+                break
+        self.parent.state = 4
+        self.parent.trigger = Completion(self.parent)
+        settings.io_queue.append(self.parent)
         self.cpu_next()
 
 
 class Termination(Command):
-    parent: Add
+    parent = None
 
     def __init__(self, parent):
         self.command_type = 'T'
