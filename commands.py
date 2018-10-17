@@ -64,63 +64,32 @@ class Add(Command):
         settings.job_scheduling.put(self)
 
     def run(self):
-        # STATES:
-        # 0: JOB SCHEDULING TO READY
-        # 1: READY 1 TO CPU
-        # 2: CPU TO READY 2
-        # 3: READY 2 TO CPU
-        # 4: CPU TO IO WAIT
-        # 5: IO WAIT TO READY 1
-        # 6: JOB DONE
+        global current_job
 
-        def ready_cpu(this):
-
-            if not this.been_to_cpu:
-                this.been_to_cpu = True
-                this.hit = settings.time
+        if self.state == 1:
+            if not self.been_to_cpu:
+                self.been_to_cpu = True
+                self.hit = settings.time
 
             settings.cpu_from_second = False
 
-            move_to_cpu(this, 100)
-
-        def secondary_cpu(this):
+            self.quantum = 100
+        else:
             settings.cpu_from_second = True
 
-            move_to_cpu(this, 300)
+            self.quantum = 300
 
-        def move_to_cpu(this, n):
-            global current_job
+        self.queue_arrival = settings.time
+        current_job = self
 
-            if self in settings.time_queue:
-                settings.time_queue.remove(self)
-                heapq.heapify(settings.time_queue)
-
-            this.quantum = n
-            this.queue_arrival = settings.time
-            current_job = this
-
-            if this.time_left <= n:
-                this.state = 6
-                this.leave = settings.time + this.time_left
-                this.trigger = Termination(this)
-            else:
-                this.state = 2
-                this.leave = settings.time + this.quantum
-                this.trigger = Expiration(this)
-
-        def terminate(this):
-            return
-
-        _switcher = {
-            1: ready_cpu,
-            # 2: cpu_secondary,
-            3: secondary_cpu,
-            # 4: cpu_io,
-            # 5: io_ready,
-            6: terminate,
-        }
-
-        _switcher[self.state](self)
+        if self.time_left <= self.quantum:
+            self.state = 6
+            self.leave = settings.time + self.time_left
+            self.trigger = Termination(self)
+        else:
+            self.state = 2
+            self.leave = settings.time + self.quantum
+            self.trigger = Expiration(self)
 
     def format_print(self):
         print("%5d%11d%11d%10d" % (self.job_id, self.start, self.mem, self.run_time))

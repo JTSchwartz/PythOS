@@ -3,28 +3,18 @@ import settings
 import heapq
 
 
-# Interprets
 def cmd_create(user_input):
 
     def add(argv): return commands.Add(argv)
 
-    # def completion(argv): return commands.Completion(argv)
-
     def display(argv): return commands.Display(argv)
-
-    # def expiration(argv): return commands.Expiration(argv)
 
     def io(argv): return commands.IO(argv)
 
-    # def termination(argv): return commands.Termination(argv)
-
     _commands = {
         "A": add,
-        # "C": completion,
         "D": display,
-        # "E": expiration,
         "I": io,
-        # "T": termination,
     }
 
     return _commands[user_input[0]](user_input[2:])
