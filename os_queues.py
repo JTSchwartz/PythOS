@@ -2,7 +2,6 @@ from collections import deque
 
 
 class OSQueue(deque):
-
     quantum = None
 
     def __init__(self, quantum=None):

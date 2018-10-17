@@ -8,23 +8,23 @@ def cmd_create(user_input):
 
     def add(argv): return commands.Add(argv)
 
-    def completion(argv): return commands.Completion(argv)
+    # def completion(argv): return commands.Completion(argv)
 
     def display(argv): return commands.Display(argv)
 
-    def expiration(argv): return commands.Expiration(argv)
+    # def expiration(argv): return commands.Expiration(argv)
 
     def io(argv): return commands.IO(argv)
 
-    def termination(argv): return commands.Termination(argv)
+    # def termination(argv): return commands.Termination(argv)
 
     _commands = {
         "A": add,
-        "C": completion,
+        # "C": completion,
         "D": display,
-        "E": expiration,
+        # "E": expiration,
         "I": io,
-        "T": termination,
+        # "T": termination,
     }
 
     return _commands[user_input[0]](user_input[2:])
@@ -106,7 +106,7 @@ if __name__ == '__main__':
             cmd.start_job()
             ready_up()
 
-        except EOFError:  # TODO: Finish all jobs in the system
+        except EOFError:
             break
 
     while len(settings.time_queue) != 0:
