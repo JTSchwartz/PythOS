@@ -1,5 +1,22 @@
+# /*******************************************************************************
+# /
+# /      filename:  settings.py
+# /
+# /   description:  Holds the static variables for the OS
+# /
+# /        author:  Schwartz, Jacob
+# /      login id:  FA_18_CPS356_33
+# /
+# /         class:  CPS 356
+# /    instructor:  Perugini
+# /    assignment:  Midterm Project
+# /
+# /      assigned:  September 27, 2018
+# /           due:  October 25, 2018
+# /
+# /******************************************************************************/
+
 from os_queues import OSQueue
-from queue import PriorityQueue
 from queue import Queue
 
 time = 0

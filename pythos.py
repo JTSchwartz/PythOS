@@ -1,3 +1,22 @@
+# /*******************************************************************************
+# /
+# /      filename:  pythos.py
+# /
+# /   description:  Main function for interpreting input and
+# /                 moving the OS through simulated time
+# /
+# /        author:  Schwartz, Jacob
+# /      login id:  FA_18_CPS356_33
+# /
+# /         class:  CPS 356
+# /    instructor:  Perugini
+# /    assignment:  Midterm Project
+# /
+# /      assigned:  September 27, 2018
+# /           due:  October 25, 2018
+# /
+# /******************************************************************************/
+
 import commands
 import settings
 import heapq

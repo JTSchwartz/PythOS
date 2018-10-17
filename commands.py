@@ -1,3 +1,21 @@
+# /*******************************************************************************
+# /
+# /      filename:  commands.py
+# /
+# /   description:  Commands/Input classes
+# /
+# /        author:  Schwartz, Jacob
+# /      login id:  FA_18_CPS356_33
+# /
+# /         class:  CPS 356
+# /    instructor:  Perugini
+# /    assignment:  Midterm Project
+# /
+# /      assigned:  September 27, 2018
+# /           due:  October 25, 2018
+# /
+# /******************************************************************************/
+
 import settings
 import heapq
 import re
